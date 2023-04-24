@@ -1,0 +1,51 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import time
+from datetime import datetime
+
+class JobScraper:
+    def __init__(self):
+        self.url = 'https://nofluffjobs.com/pl/devops?page=3&criteria=seniority%3Dsenior,expert'
+    
+    def get_job_data(self):
+        page = requests.get(self.url)
+        soup = BeautifulSoup(page.content, 'html.parser')
+        results = soup.find(id='job-list')
+        job_elems = results.find_all('div', class_='posting-item')
+
+        titles = []
+        companies = []
+        locations = []
+        timestamps = []
+
+        for job_elem in job_elems:
+            title_elem = job_elem.find('div', class_='posting-item-title')
+            title = title_elem.text.strip().split(' w ')[0]
+            titles.append(title)
+
+            company_elem = job_elem.find('div', class_='posting-item-title')
+            company = company_elem.text.strip().split(' w ')[1].split(',')[0]
+            companies.append(company)
+
+            location_elem = job_elem.find('div', class_='posting-item-title')
+            location = location_elem.text.strip().split(' w ')[1].split(',')[1].strip()
+            locations.append(location)
+
+        data = {'Title': titles, 'Company': companies, 'Location': locations}
+        df = pd.DataFrame(data)
+        df = df.drop('timestamps', axis=1)  # usuwamy kolumnę "timestamps"
+        return df
+    
+    def get_job_data_scheduled(self):
+        while True:
+            current_time = datetime.now().strftime("%H:%M:%S")
+            
+            if current_time == "06:00:00" or current_time == "20:00:00":
+                print("Pobieram dane...")
+                df = self.get_job_data()
+                df.to_csv('jobs.csv', index=False)
+            
+            time.sleep(3600)  # uśpienie programu na godzinę (3600 sekund)
+
+        
